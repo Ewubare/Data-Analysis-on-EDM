@@ -1,0 +1,545 @@
+---
+title: "Exploratory Data Analysis on EDM"
+author: "Tega Ewubare"
+date: "(`r format(Sys.time(), '%d %B, %Y')`)"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, fig.width = 8, fig.height = 8)
+```
+
+## Packages
+
+```{r}
+# List of required packages
+
+library(tidyverse)
+library(knitr)
+library(paletteer)
+library(factoextra)
+library(ggpubr)
+library(PerformanceAnalytics)
+library(tools)
+
+```
+
+## Data Import
+
+```{r}
+
+edm_data = read_csv("train_data_final.csv")
+
+```
+## Introduction
+
+Electronic Dance Music (EDM) is a compilation of electronic music subgenres that have developed over the last few decades EDM has become a global phenomenon, with festivals and concerts drawing millions of fans each year. Here in Miami, the Ultra Music Festival is an annual event that has become a staple of the city's music scene and a favourite of many students. Given the genre's popularity, it is essential to understand the distinguishing characteristics of each subgenre to more quickly identify the subgenre and better appreciate the diversity of EDM.
+
+## Dataset
+This dataset comes from Sivadithiyan official on Kaggle. To collect this dataset, the author used YouTube music mixes and Ableton to extract 2000 audio clips per subgenre. 
+
+## Goal
+
+This project aims to explore the audio features of EDM genres using a dataset containing 16 different subgenres to determine which feature best correlates with the genre to predict genres. 
+
+
+**Research Question**
+
+What are the distinguishing audio features of each EDM genre in the dataset?
+
+There are 131 columns in the dataset. We can use all of them except 'label' for our analysis. The 'label' column contains the names of subgenres. I will be using the following columns for the analysis: rmse_mean, spectral_centroid_mean, spectral_bandwidth_mean, rolloff_mean, zero_crossing_rate_mean, chroma_cqt_mean, and spectral_contrast_mean. These columns contain audio features that are the easiest to interpret and understand.
+
+**Null Hypothesis**
+
+The zero crossing mean rate is not significantly different across the EDM genres in the dataset.
+
+**Alternative Hypothesis**
+
+The zero crossing mean rate is significantly different across the EDM genres in the dataset.
+
+
+## Variables and Description
+
+There are 131 columns in the dataset. We can use all of them except 'label' for our analysis. The 'label' column contains the names ofsubgenre. I will be  using the following columns for the analysis: rmse_mean, spectral_centroid_mean, spectral_bandwidth_mean, rolloff_mean, zero_crossing_rate_mean, chroma_cqt_mean, spectral_contrast_mean. These columns contain audio features that are the most easy to interpret and understand.
+       	
+
+- rmse_mean: Average root mean square error, reflecting the average energy of the audio signal.
+- rmse_std: Standard deviation of the root mean square error, indicating variability in signal energy.
+- spectral_centroid_mean: Mean value of the spectral centroid, associated with perceived brightness of sound.
+- spectral_centroid_std: Standard deviation of the spectral centroid, showing brightness variability.
+- spectral_bandwidth_mean: Average spectral bandwidth, measuring spread around spectral centroid affecting timbre.
+- spectral_bandwidth_std: Standard deviation of spectral bandwidth, indicating variability in frequency spread.
+- rolloff_mean: Mean spectral rolloff point, frequency below which a specified percentage of spectral energy is contained.
+- rolloff_std: Standard deviation of the spectral rolloff, showing variability in frequency distribution cutoff.
+- zero_crossing_rate_mean: Average rate at which signal changes from positive to negative or vice versa.
+- zero_crossing_rate_std: The zero crossing rate's standard deviation indicates variability in textural features.
+- mfcc1_mean to mfcc40_mean: Each mean of Mel-frequency cepstral coefficients, capturing aspects of sound's shape and texture.
+- mfcc1_std to mfcc40_std: Each standard deviation of Mel-frequency cepstral coefficients, describing variability in each coefficient.
+- chroma1_mean to chroma12_mean: Mean values for the twelve different chroma features relating to the twelve pitch classes.
+- chroma1_std to chroma12_std: Standard deviations for the twelve chroma features, indicating variability in harmonic content.
+- tonnetz1_mean to tonnetz6_mean: Mean values of tonal centroid features, capturing harmonic and tonal characteristics.
+- tonnetz1_std to tonnetz6_std: The tonal centroid features' standard deviations show harmonic variability.
+- chroma_cqt_mean: Mean of constant-Q chroma features, robust representation of harmonic content over time.
+- chroma_cqt_std: The standard deviation of constant-Q chroma features indicates variability in harmonic patterns.
+- spectral_contrast_mean: Average spectral contrast, measuring dynamic range between spectral peaks and valleys.
+- spectral_contrast_std: Standard deviation of spectral contrast, representing variability in dynamic range across clips.
+- label: Categorical variable containing genre labels for classifying music into different genres.
+
+
+First, let us show the dataset's subgenres and the number of audio clips for each genre.
+
+
+```{r}
+
+# The syntax below will create a bar plot of the distribution of subgenres in the dataset
+
+ggplot(edm_data, aes(x = label, fill = label)) +  
+  geom_bar(color = "black") + 
+  scale_fill_paletteer_d(palette = "ggsci::category20_d3") +  
+  labs(title = "Distribution of Subgenres",
+       x = "Genre",
+       y = "Frequency") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+        axis.text.y = element_text(face = "bold"),
+        axis.title = element_text(face = "bold"),
+        plot.title = element_text(face = "bold")) +
+  theme(legend.position = "none")
+
+```
+
+
+The dataset contains 16 different subgenres, and all 32000 audio clips are distributed evenly. This balanced distribution will allow us to avoid bias in the analysis.
+
+
+## Overview
+
+Let us look at the means of the audio features for each subgenre to get an idea of the distribution of the data.
+
+
+```{r}
+
+# The syntax below will create a table of the audio feature means for each subgenre
+
+feature_means_summary <- edm_data %>%
+  group_by(label) %>%
+  summarise(
+    rsme_mean = mean(rmse_mean),
+    spectral_centroid_mean = mean(spectral_centroid_mean),
+    spectral_bandwidth_mean = mean(spectral_bandwidth_mean),
+    rolloff_mean = mean(rolloff_mean),
+    zero_crossing_rate_mean = mean(zero_crossing_rate_mean),
+    chroma_cqt_mean = mean(chroma_cqt_mean),
+    spectral_contrast_mean = mean(spectral_contrast_mean)
+  ) 
+
+```
+
+
+Visualizing the data will help us understand the distribution of the audio features across the different genres.
+
+
+```{r}
+
+# The syntax below will create a faceted bar plot of the audio feature means for each subgenre
+
+# Reshape the data from wide to long format and format the labels
+feature_means_long <- feature_means_summary %>%
+  pivot_longer(
+    cols = -label,
+    names_to = "Feature",
+    values_to = "Mean"
+  ) %>%
+  mutate(label = gsub("_", " ", label),  
+         label = tools::toTitleCase(label)) 
+
+ggplot(feature_means_long, aes(x = label, y = Mean, fill = label)) +
+  geom_col(color = "black") +
+  scale_fill_paletteer_d(palette = "ggsci::category20_d3") +
+  facet_wrap(~ Feature, scales = "free_y", ncol = 3) +
+  labs(title = "Audio Feature Means by Subgenre",
+       x = "",  # X-axis label removed since it's evident from the labels
+       y = "Mean Feature Value",
+       fill = "Subgenre") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())  # Adjust text alignment for better readability
+
+```
+
+
+Now, let us see if there is any correlation between the audio features.
+
+
+```{r}
+
+# The syntax below will create a correlation matrix of the audio features
+
+# Select the features to include in the correlation matrix
+selected_features <- edm_data %>% 
+  select(rmse_mean, spectral_centroid_mean, spectral_bandwidth_mean, rolloff_mean,
+         zero_crossing_rate_mean, chroma_cqt_mean, spectral_contrast_mean)
+
+cor_matrix <- cor(selected_features, use = "complete.obs") 
+chart.Correlation(cor_matrix, histogram = TRUE)
+
+
+``` 
+
+
+**Correlation Implications**
+
+The very high correlations among spectral centroid, bandwidth, and rolloff suggest that these features are closely related descriptors of the frequency content of a sound. They are critical for distinguishing different types of sounds and could be key features for subgenre classification in EDM.
+
+
+Since we are focusing on the "zero_crossing_rate_mean" feature, let us create a separate plot for this feature to get a better view of the data.
+
+
+```{r}
+
+# The syntax below will create a bar chart of the zero crossing rate means for each subgenre
+
+# Filter the data for the "zero_crossing_rate_mean" feature
+zerocrossing_feature_data <- feature_means_long %>%
+  filter(Feature == "zero_crossing_rate_mean")
+
+ggplot(zerocrossing_feature_data, aes(x = label, y = Mean, fill = label)) +
+  geom_col(color = "black") +
+  scale_fill_paletteer_d(palette = "ggsci::category20_d3") +
+  labs(title = "Zero Crossing Rate Means by Genre",
+       y = "Mean Value") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+
+```
+
+
+Viewing the data this way, we can see differences in the mean zero crossing rate values across the different genres and some relationships between the genres. For example, the "dubstep" subgenre has a much higher mean zero crossing rate compared to other genres like "ambient" and "lo-fi". This is likely because of the percussive nature of dubstep music, which has a higher rate of zero crossings due to the sharp transitions in the waveform compared to the smoother transitions in ambient and Lofi music.
+
+
+## ANOVA Test
+
+We can perform an Analysis of Variance test to determine if significant differences exist in the zero crossing rate means among the different genres (ANOVA). ANOVA is used because it is specifically designed to compare means across three or more groups. In this case, I am examining differences in means across 16 different EDM genres.
+
+Assumptions of this test:
+
+- Population distribution is normal
+
+- Samples are random and independent
+
+- Homogeneity of sample variance
+
+```{r}
+
+#The syntax below will run an ANOVA test 
+
+# For each feature, run ANOVA test and store results
+anova_features <- list()
+features <- c("rmse_mean", "spectral_centroid_mean", "spectral_bandwidth_mean",
+              "rolloff_mean", "zero_crossing_rate_mean", "chroma_cqt_mean", "spectral_contrast_mean")
+
+anova_summaries <- data.frame(Feature = character(), F_value = numeric(), Pr_F = numeric(), stringsAsFactors = FALSE)
+
+for (feature in features) {
+  # Running ANOVA for each feature
+  model <- aov(as.formula(paste(feature, "~ label")), data = edm_data)
+  anova_features[[feature]] <- model
+
+  # Extract summary
+  summary_model <- summary(model)
+  anova_summaries <- rbind(anova_summaries, data.frame(
+    Feature = feature,
+    F_value = summary_model[[1]]["label", "F value"],
+    Pr_F = summary_model[[1]]["label", "Pr(>F)"]
+  ))
+}
+
+lapply(anova_features, summary)
+
+
+```
+
+
+Visualizing the results of the ANOVA test.
+
+
+```{r}
+
+#The syntax below will create a bar chart of the F-values for each feature
+
+# Convert p-values to negative log scale for better visualization
+anova_summaries$neg_log_p <- -log10(anova_summaries$Pr_F)
+
+ggplot(anova_summaries, aes(x = reorder(Feature, F_value), y = F_value, fill = Feature)) +
+  geom_col(show.legend = FALSE, color = "black") +
+  scale_fill_paletteer_d(palette = "ggthemes::Superfishel_Stone") +
+  labs(title = "ANOVA F-values by Audio Feature",
+       x = "Feature",
+       y = "F-value") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+## ANOVA Analysis
+
+
+- rmse_mean : significant difference in energy levels across genres
+
+  - F value: 2233
+  
+  - p-value: <2e-16
+  
+- spectral_centroid_mean: significant differences in sound brightness across genres
+
+  - F value: 3667
+  
+  - p-value: <2e-16
+
+- spectral_bandwidth_mean: significant differences in spread of frequencies around the spectral centroid across genres
+
+  - F value: 3802
+  
+  - p-value: <2e-16
+
+- rolloff_mean: significant differences in the cuttoff frequencies across genres
+
+  - F value: 4230
+  
+  - p-value: <2e-16
+
+- zero_crossing_rate_mean: significant differences in the rate of signal changes across genres
+
+  - F value: 1088
+  
+  - p-value: <2e-16
+
+- chroma_cqt_mean: significant differences in harmonic content across genres 
+
+  - F value: 1631
+  
+  - p-value: <2e-16.
+
+- spectral_contrast_mean: significant differences in dynamic range across genres
+
+  - F value: 3347
+  
+  - p-value: <2e-16
+
+
+## Answering the Research Question
+
+The ANOVA results show that all tested audio features significantly vary across genres. Features like Spectral Rolloff, Spectral Centroid, Spectral Contrast, and Spectral Bandwidth are strong discriminators of subgenres, given their high F-values. This could make them potent tools for further subgenre classification.
+
+The zero crossing rate has a lower F-value than other features, but it still shows significant differences across genres. This suggests that it might be a less powerful discriminator. However, it still contributes to subgenre differentiation. Due to this, I will reject the null hypothesis and accept the alternative hypothesis that the zero crossing rate is significantly different across the EDM genres in the dataset.
+
+## Principal Component Analysis 
+
+I am not satisfied with the initial findings of this report. Since I aim to predict the subgenres accurately, I will use more features for further analysis. So far, I only used seven variables that would be the most important in determining the subgenre of the song. However, for a comprehensive analysis, I will use all 130 variables in the dataset to find a statistically relevant pattern in the data that can be used to classify the subgenres. With Principal Component Analysis (PCA), I can reduce the dimensionality of the data and identify the essential features that contribute to the variance in the dataset.
+
+
+```{r}
+
+# The syntax below will perform a Principal Component Analysis (PCA) on the dataset to reduce the dimensionality of the data
+
+numeric_data <- edm_data %>% select(-label)
+
+scaled_data <- scale(numeric_data)
+
+pca_result <- prcomp(scaled_data, center = TRUE, scale. = TRUE)
+
+pca_scores <- data.frame(pca_result$x)
+
+pca_scores$label <- edm_data$label
+
+```
+
+
+Convert the PCA results to percentages to determine the variance explained by each principal component.
+
+
+```{r}
+
+# The syntax below will calculate the variance of the principal components
+
+var_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2) * 100  
+
+pca_var_df <- data.frame(
+  PC = 1:length(var_explained), 
+  Variance = var_explained
+)
+
+print(pca_var_df)
+
+```
+
+Using the results of the PCA, a scree plot can be used to observe the variance explained by each principal component.
+
+
+```{r}
+
+# The syntax below will create a scree plot of the PCA results
+
+# Create a data frame for the variance explained
+var_explained <- data.frame(PC = 1:length(pca_result$sdev), 
+                            Variance = pca_result$sdev^2 / sum(pca_result$sdev^2))
+
+ggplot(var_explained, aes(x = PC, y = Variance)) +
+  geom_line() + 
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Scree Plot of PCA", x = "Principal Component", y = "Proportion of Variance Explained")
+
+```
+
+
+Lets calculate how many principal components are needed to explain 80%, 85%, 90%, 95%, and 99% of the variance. This will help me determine how many principal components to use in a predictive model.
+
+
+```{r}
+
+# The syntax below will calculate the number of principal components needed to explain 80%, 85%, 90%, 95%, and 99% of the variance
+
+# PCA result stored in pca_result
+pca_result <- prcomp(scaled_data, center = TRUE, scale. = TRUE)
+
+# Calculate the proportion of variance explained by each PC
+variance_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+
+# Calculate cumulative variance explained
+cumulative_variance <- cumsum(variance_explained)
+
+# Desired levels of explained variance
+levels_of_variance <- c(0.8, 0.85, 0.9, 0.95, 0.99)
+
+# Determine the number of PCs required to reach each level of explained variance
+pcs_needed <- sapply(levels_of_variance, function(x) which(cumulative_variance >= x)[1])
+
+results_df <- data.frame(
+  `Variance_Explained` = c("80%", "85%", "90%", "95%", "99%"),
+  `Number_of_PCs` = pcs_needed
+)
+
+results_df
+
+```
+
+
+Out of the 130 principal components, the first ten explain 56.30039% of the variance in the data.
+
+
+```{r}
+
+# The syntax below will create  a scree plot of the PCA results
+
+fviz_eig(pca_result, addlabels = TRUE, ylim = c(0, 30)) +
+  scale_y_continuous(breaks = seq(0, 30, by = 5)) +
+  labs(title = "Scree Plot of PCA",
+       x = "Principal Component",
+       y = "Variance Explained (%)") 
+
+```
+
+
+
+```{r}
+
+# The syntax below will extract the first 5 principal components and combine them with the original EDM data
+
+pc_scores <- pca_result$x[, 1:5]
+
+edm_data_with_pcs <- cbind(edm_data, pc_scores)
+
+
+```
+
+
+
+```{r}
+
+# The syntax below will create a scatter plot of the first two principal components with labels wrapped
+
+# Edit the label names
+edm_data_with_pcs <- edm_data_with_pcs %>%
+  mutate(label = gsub("_", " ", label),  
+         label = toTitleCase(label))  
+
+ggplot(edm_data_with_pcs, aes(x = PC1, y = PC2, color = label)) +
+  geom_point(size = 0.5) +  
+  scale_color_paletteer_d(palette = "ggsci::category20_d3") +
+  labs(title = "Principal Component 1 vs Pricipal Component 2 by Subgenre", x = "PC 1", y = "PC 2") +
+  theme_minimal() +
+  facet_wrap(~ label, scales = "free")  
+
+```
+
+```{r}
+
+# The syntax below will create a scatter plot of the first two principal components with all labels
+
+# Plotting PC1 vs PC2
+ggplot(edm_data_with_pcs, aes(x = PC1, y = PC2, color = label)) +
+  geom_point(size = 1) +  
+  theme_minimal() + 
+  scale_color_paletteer_d(palette = "ggsci::category20_d3") +
+    stat_ellipse(size = 1.5) + 
+  labs(title = "Principal Component 1 vs Pricipal Component 2 by Subgenre", x = "PC 1", y = "PC 2") 
+
+```
+
+
+
+```{r}
+
+# The syntax below will create a correlation matrix of the first 5 principal components and the means of the initial 7 audio features
+
+edm_data_mean <- edm_data_with_pcs %>%
+  group_by(label) %>%  
+  summarise(across(where(is.numeric), mean, na.rm = TRUE))
+
+
+selected_columns <- c("PC1", "PC2", "PC3", "PC4", "PC5","rmse_mean", "spectral_centroid_mean", "spectral_bandwidth_mean",
+              "rolloff_mean", "zero_crossing_rate_mean", "chroma_cqt_mean", "spectral_contrast_mean" )  
+chart.Correlation(edm_data_mean[selected_columns], histogram = TRUE)
+
+```
+
+
+## Conclusion
+
+The PCA results show that this data is robust enough to predict subgenres. For the future of this project, machine learning techniques such as K-means clustering will be used. A potential use case for a model would be for advancing music recommendation systems. Recommendation algorithms could suggest songs that align more closely with listeners' preferences, identified through cluster membership.
+
+## Citations
+
+  Bambooforest. (n.d.). Bambooforest/APY313: Data Science of Culture and language. GitHub. https://github.com/bambooforest/APY313/tree/main 
+  
+  Hvitfeldt E. (2021). paletteer: Comprehensive Collection of Color Palettes. version 1.3.0.
+  https://github.com/EmilHvitfeldt/paletteer
+  
+  Kassambara A (2023). _ggpubr: 'ggplot2' Based Publication Ready Plots_. R package version 0.6.0,
+  <https://CRAN.R-project.org/package=ggpubr>.
+  
+  Kassambara A, Mundt F (2020). _factoextra: Extract and Visualize the Results of Multivariate Data Analyses_. R package
+  version 1.0.7, <https://CRAN.R-project.org/package=factoextra>.
+  
+  Lafs. (2023, February 20). A brief history of EDM. The Los Angeles Film School. https://www.lafilm.edu/blog/brief-history-edm/
+  
+  official, S. (2024, April 20). EDM music genres. Kaggle. https://www.kaggle.com/datasets/sivadithiyan/edm-music-genres 
+  
+  Peterson BG, Carl P (2020). _PerformanceAnalytics: Econometric Tools for Performance and Risk Analysis_. R package version
+  2.0.4, <https://CRAN.R-project.org/package=PerformanceAnalytics>.
+    
+  Hvitfeldt E. (2021). paletteer: Comprehensive Collection of Color Palettes. version 1.3.0.
+  https://github.com/EmilHvitfeldt/paletteer
+  
+  Wickham H, Averick M, Bryan J, Chang W, McGowan LD, François R, Grolemund G, Hayes A, Henry L, Hester J, Kuhn M, Pedersen TL,
+  Miller E, Bache SM, Müller K, Ooms J, Robinson D, Seidel DP, Spinu V, Takahashi K, Vaughan D, Wilke C, Woo K, Yutani H
+  (2019). “Welcome to the tidyverse.” _Journal of Open Source Software_, *4*(43), 1686. doi:10.21105/joss.01686
+  <https://doi.org/10.21105/joss.01686>.
+  
+  Xie Y (2024). _knitr: A General-Purpose Package for Dynamic Report Generation in R_. R package version 1.46,
+  <https://yihui.org/knitr/>.
