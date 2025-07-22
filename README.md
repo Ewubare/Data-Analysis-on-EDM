@@ -1,4 +1,3 @@
-# Exploratory-Data-Analysis-on-EDM
 Identifying distinguishing audio features among EDM subgenres
 
 Link to required data set:
